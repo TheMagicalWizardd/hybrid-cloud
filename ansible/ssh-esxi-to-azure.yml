@@ -1,0 +1,38 @@
+---
+- name: Configure SSH from ESXi VM to Azure VM
+  hosts: esxi
+  become: yes
+
+  vars:
+    testuser_name: testuser
+    azure_vm_ip: "20.67.85.128"
+
+  tasks:
+    - name: Copy Azure private key to ESXi testuser
+      copy:
+        src: ~/.ssh/azure
+        dest: "/home/{{ testuser_name }}/.ssh/id_ed25519"
+        owner: "{{ testuser_name }}"
+        group: "{{ testuser_name }}"
+        mode: '0600'
+
+    - name: Add Azure VM to known_hosts for testuser
+      shell: "ssh-keyscan -H {{ azure_vm_ip }} > /home/{{ testuser_name }}/.ssh/known_hosts"
+      args:
+        creates: "/home/{{ testuser_name }}/.ssh/known_hosts"
+
+    - name: Set known_hosts permissions
+      file:
+        path: "/home/{{ testuser_name }}/.ssh/known_hosts"
+        owner: "{{ testuser_name }}"
+        group: "{{ testuser_name }}"
+        mode: '0644'
+
+    - name: Test SSH from ESXi VM to Azure VM as testuser
+      command: sudo -u {{ testuser_name }} ssh -o BatchMode=yes -o StrictHostKeyChecking=yes testuser@{{ azure_vm_ip }} hostname
+      register: ssh_test
+      changed_when: false
+
+    - name: Show SSH test result
+      debug:
+        var: ssh_test.stdout
