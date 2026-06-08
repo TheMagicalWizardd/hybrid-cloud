@@ -1,0 +1,16 @@
+#cloud-config
+users:
+  - name: student
+    groups: sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMuIEgE3JZLFiJg3skMI4mcWTOu+26jqY8YYjm+De3I9 student@Ubuntu2404ServerGold-mcm55924-322993638807
+
+package_update: true
+packages:
+  - python3
+  - python3-apt
+
+runcmd:
+  - echo "hybrid-esxi-vm ready" > /tmp/cloudinit-done.txt
