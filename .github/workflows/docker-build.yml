@@ -1,0 +1,25 @@
+name: Docker Build
+
+on:
+  push:
+    paths:
+      - "docker/**"
+      - ".github/workflows/docker-build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Docker version
+        run: docker --version
+
+      - name: Build Hello World Docker image
+        run: docker build -t hello-hybrid:latest docker
+
+      - name: List Docker images
+        run: docker images | grep hello-hybrid
