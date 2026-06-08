@@ -1,0 +1,59 @@
+---
+- name: Configure hybrid cloud VMs
+  hosts: all
+  become: yes
+
+  vars:
+    testuser_name: testuser
+    testuser_public_key: "{{ lookup('file', '~/.ssh/azure.pub') }}"
+
+  pre_tasks:
+    - name: Create testuser
+      user:
+        name: "{{ testuser_name }}"
+        shell: /bin/bash
+        groups: sudo
+        append: yes
+        create_home: yes
+
+    - name: Create .ssh directory for testuser
+      file:
+        path: "/home/{{ testuser_name }}/.ssh"
+        state: directory
+        owner: "{{ testuser_name }}"
+        group: "{{ testuser_name }}"
+        mode: '0700'
+
+    - name: Add public key to testuser authorized_keys
+      ansible.posix.authorized_key:
+        user: "{{ testuser_name }}"
+        key: "{{ testuser_public_key }}"
+
+  roles:
+    - docker_role
+
+  tasks:
+    - name: Copy Docker app files
+      copy:
+        src: "../docker/"
+        dest: /opt/hello-hybrid/
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Build Hello World Docker image
+      community.docker.docker_image:
+        name: hello-hybrid
+        tag: latest
+        source: build
+        build:
+          path: /opt/hello-hybrid
+
+    - name: Run Hello World container
+      community.docker.docker_container:
+        name: hello-hybrid
+        image: hello-hybrid:latest
+        state: started
+        restart_policy: always
+        published_ports:
+          - "8080:80"
