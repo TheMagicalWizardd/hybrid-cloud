@@ -1,11 +1,12 @@
 name: Ansible Deploy
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
-
+  workflow_run:
+    workflows:
+      - Docker Build and Push
+    types:
+      - completed
 jobs:
   deploy:
     runs-on: self-hosted
