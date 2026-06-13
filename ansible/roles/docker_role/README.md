@@ -1,38 +1,43 @@
-Role Name
-=========
+# docker_role
 
-A brief description of the role goes here.
+Deze zelfgemaakte Ansible-role installeert en configureert Docker op de Azure VM en de ESXi VM binnen de hybrid-cloud deployment.
 
-Requirements
-------------
+## Doel
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+De role zorgt ervoor dat beide Linux hosts Docker-containers kunnen draaien. De Docker image zelf wordt niet op de hosts gebouwd. De image wordt door GitHub Actions gebouwd en naar GitHub Container Registry gepusht. Daarna haalt `ansible/site.yml` deze image op en start de container op beide hosts.
 
-Role Variables
---------------
+## Taken
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+Deze role voert de volgende taken uit:
 
-Dependencies
-------------
+- installeert de benodigde packages voor Docker
+- configureert de Docker repository
+- installeert Docker Engine
+- start en enabled de Docker service
+- maakt de hosts klaar voor containerdeployment
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+## Gebruik
 
-Example Playbook
-----------------
+De role wordt gebruikt in `ansible/site.yml`:
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+```yaml
+roles:
+  - docker_role
+## Vereisten
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+De benodigde Ansible collections staan in:
 
-License
--------
+ansible/requirements.yml
 
-BSD
+Installeer deze met:
 
-Author Information
-------------------
+ansible-galaxy collection install -r ansible/requirements.yml
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+## Onderdeel van de opdracht
+
+Deze role wordt uitgevoerd op beide omgevingen:
+
+- Azure VM
+- ESXi VM
+
+Hiermee wordt voldaan aan de eis dat Docker via een zelfgemaakte Ansible Galaxy-style role wordt geïnstalleerd.
