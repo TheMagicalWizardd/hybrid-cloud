@@ -2,41 +2,47 @@ name: Ansible Deploy
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - Docker Build and Push
-    types:
-      - completed
 
 jobs:
   deploy:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Update local repository
+        run: |
+          cd /home/student/git/hybrid-cloud
+          git pull
+
+      - name: Generate inventory from Terraform outputs
+        run: |
+          cd /home/student/git/hybrid-cloud
+          ./scripts/generate-inventory.sh
+          cat ansible/inventory.ini
+          source ~/hybrid-ansible-venv/bin/activate
+          ansible-inventory -i ansible/inventory.ini --list
 
       - name: Install Ansible requirements
         run: |
+          cd /home/student/git/hybrid-cloud
           source ~/hybrid-ansible-venv/bin/activate
           ansible-galaxy collection install -r ansible/requirements.yml
 
-      - name: Generate inventory from Terraform outputs
-        run: ./scripts/generate-inventory.sh
-
       - name: Deploy container to Azure and ESXi
         run: |
+          cd /home/student/git/hybrid-cloud
           source ~/hybrid-ansible-venv/bin/activate
           ansible-playbook -i ansible/inventory.ini ansible/site.yml \
             -e "container_image=ghcr.io/themagicalwizardd/hybrid-cloud:latest"
 
       - name: Configure and test SSH ESXi to Azure
         run: |
+          cd /home/student/git/hybrid-cloud
           source ~/hybrid-ansible-venv/bin/activate
           ansible-playbook -i ansible/inventory.ini ansible/ssh-esxi-to-azure.yml
 
       - name: Verify HTTP on both hosts
         run: |
+          cd /home/student/git/hybrid-cloud
           AZURE_IP="$(terraform -chdir=terraform/azure output -raw azure_public_ip)"
           ESXI_IP="$(terraform -chdir=terraform/esxi output -raw esxi_vm_ip)"
           curl --fail "http://${AZURE_IP}:8080"
