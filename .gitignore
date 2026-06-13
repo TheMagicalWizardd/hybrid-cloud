@@ -29,3 +29,4 @@ hybrid-ansible-venv/
 
 # Runner
 actions-runner/
+*.save
