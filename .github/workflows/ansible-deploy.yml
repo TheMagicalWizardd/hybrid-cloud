@@ -21,8 +21,13 @@ jobs:
           source ~/hybrid-ansible-venv/bin/activate
           ansible-galaxy collection install -r ansible/requirements.yml
 
-      - name: Generate inventory from Terraform outputs
-        run: ./scripts/generate-inventory.sh
+      - name: Generate inventory from local Terraform outputs
+        run: |
+          ./scripts/generate-inventory.sh
+          echo "---- generated inventory ----"
+          cat ansible/inventory.ini
+          echo "-----------------------------"
+          ansible-inventory -i ansible/inventory.ini --list
 
       - name: Deploy container to Azure and ESXi
         run: |
@@ -37,7 +42,7 @@ jobs:
 
       - name: Verify HTTP on both hosts
         run: |
-          AZURE_IP="$(terraform -chdir=terraform/azure output -raw azure_public_ip)"
-          ESXI_IP="$(terraform -chdir=terraform/esxi output -raw esxi_vm_ip)"
+          AZURE_IP="$(terraform -chdir=/home/student/git/hybrid-cloud/terraform/azure output -raw azure_public_ip)"
+          ESXI_IP="$(terraform -chdir=/home/student/git/hybrid-cloud/terraform/esxi output -raw esxi_vm_ip)"
           curl --fail "http://${AZURE_IP}:8080"
           curl --fail "http://${ESXI_IP}:8080"
