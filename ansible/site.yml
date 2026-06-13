@@ -1,23 +1,24 @@
 ---
 - name: Configure hybrid cloud VMs
   hosts: all
-  become: yes
+  become: true
 
   vars:
     testuser_name: testuser
     testuser_public_key: "{{ lookup('file', '~/.ssh/azure.pub') }}"
+    container_image: "ghcr.io/themagicalwizardd/hybrid-cloud:latest"
 
   pre_tasks:
     - name: Create testuser
-      user:
+      ansible.builtin.user:
         name: "{{ testuser_name }}"
         shell: /bin/bash
         groups: sudo
-        append: yes
-        create_home: yes
+        append: true
+        create_home: true
 
     - name: Create .ssh directory for testuser
-      file:
+      ansible.builtin.file:
         path: "/home/{{ testuser_name }}/.ssh"
         state: directory
         owner: "{{ testuser_name }}"
@@ -33,27 +34,18 @@
     - docker_role
 
   tasks:
-    - name: Copy Docker app files
-      copy:
-        src: "../docker/"
-        dest: /opt/hello-hybrid/
-        owner: root
-        group: root
-        mode: '0644'
-
-    - name: Build Hello World Docker image
+    - name: Pull CI-built Hello World Docker image
       community.docker.docker_image:
-        name: hello-hybrid
-        tag: latest
-        source: build
-        build:
-          path: /opt/hello-hybrid
+        name: "{{ container_image }}"
+        source: pull
+        force_source: true
 
     - name: Run Hello World container
       community.docker.docker_container:
         name: hello-hybrid
-        image: hello-hybrid:latest
+        image: "{{ container_image }}"
         state: started
+        recreate: true
         restart_policy: always
         published_ports:
           - "8080:80"

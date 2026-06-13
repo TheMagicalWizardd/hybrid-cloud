@@ -1,25 +1,51 @@
 ---
 - name: Configure SSH from ESXi VM to Azure VM
   hosts: esxi
-  become: yes
+  become: true
 
   vars:
     testuser_name: testuser
-    azure_vm_ip: "20.67.85.128"
+    azure_vm_ip: "{{ hostvars['azure-vm']['ansible_host'] }}"
 
   tasks:
-    - name: Copy Azure private key to ESXi testuser
-      copy:
-        src: ~/.ssh/azure
-        dest: "/home/{{ testuser_name }}/.ssh/id_ed25519"
+    - name: Generate SSH key for testuser on ESXi VM
+      community.crypto.openssh_keypair:
+        path: "/home/{{ testuser_name }}/.ssh/id_ed25519"
+        type: ed25519
         owner: "{{ testuser_name }}"
         group: "{{ testuser_name }}"
         mode: '0600'
+      register: esxi_key
 
+    - name: Save ESXi public key as host fact
+      set_fact:
+        esxi_testuser_public_key: "{{ esxi_key.public_key }}"
+
+- name: Add ESXi testuser public key to Azure VM
+  hosts: azure
+  become: true
+
+  vars:
+    testuser_name: testuser
+
+  tasks:
+    - name: Authorize ESXi testuser key on Azure testuser
+      ansible.posix.authorized_key:
+        user: "{{ testuser_name }}"
+        key: "{{ hostvars['esxi-vm']['esxi_testuser_public_key'] }}"
+
+- name: Test SSH from ESXi VM to Azure VM
+  hosts: esxi
+  become: true
+
+  vars:
+    testuser_name: testuser
+    azure_vm_ip: "{{ hostvars['azure-vm']['ansible_host'] }}"
+
+  tasks:
     - name: Add Azure VM to known_hosts for testuser
       shell: "ssh-keyscan -H {{ azure_vm_ip }} > /home/{{ testuser_name }}/.ssh/known_hosts"
-      args:
-        creates: "/home/{{ testuser_name }}/.ssh/known_hosts"
+      changed_when: false
 
     - name: Set known_hosts permissions
       file:
@@ -29,7 +55,13 @@
         mode: '0644'
 
     - name: Test SSH from ESXi VM to Azure VM as testuser
-      command: sudo -u {{ testuser_name }} ssh -o BatchMode=yes -o StrictHostKeyChecking=yes testuser@{{ azure_vm_ip }} hostname
+      command: >
+        sudo -u {{ testuser_name }}
+        ssh -i /home/{{ testuser_name }}/.ssh/id_ed25519
+        -o BatchMode=yes
+        -o StrictHostKeyChecking=yes
+        testuser@{{ azure_vm_ip }}
+        hostname
       register: ssh_test
       changed_when: false
 

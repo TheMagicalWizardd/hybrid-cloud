@@ -1,0 +1,43 @@
+name: Ansible Deploy
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Docker Build and Push
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ansible requirements
+        run: |
+          source ~/hybrid-ansible-venv/bin/activate
+          ansible-galaxy collection install -r ansible/requirements.yml
+
+      - name: Generate inventory from Terraform outputs
+        run: ./scripts/generate-inventory.sh
+
+      - name: Deploy container to Azure and ESXi
+        run: |
+          source ~/hybrid-ansible-venv/bin/activate
+          ansible-playbook -i ansible/inventory.ini ansible/site.yml \
+            -e "container_image=ghcr.io/themagicalwizardd/hybrid-cloud:latest"
+
+      - name: Configure and test SSH ESXi to Azure
+        run: |
+          source ~/hybrid-ansible-venv/bin/activate
+          ansible-playbook -i ansible/inventory.ini ansible/ssh-esxi-to-azure.yml
+
+      - name: Verify HTTP on both hosts
+        run: |
+          AZURE_IP="$(terraform -chdir=terraform/azure output -raw azure_public_ip)"
+          ESXI_IP="$(terraform -chdir=terraform/esxi output -raw esxi_vm_ip)"
+          curl --fail "http://${AZURE_IP}:8080"
+          curl --fail "http://${ESXI_IP}:8080"
