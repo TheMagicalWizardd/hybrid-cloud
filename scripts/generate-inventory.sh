@@ -1,29 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-AZURE_IP="${AZURE_IP:-}"
-ESXI_IP="${ESXI_IP:-}"
+AZURE_IP="$(terraform -chdir=terraform/azure output -raw azure_public_ip)"
+ESXI_IP="$(terraform -chdir=terraform/esxi output -raw esxi_vm_ip)"
 
-if [ -z "$AZURE_IP" ]; then
-  AZURE_IP="$(terraform -chdir=/home/student/git/hybrid-cloud/terraform/azure output -raw azure_public_ip)"
-fi
+cat > ansible/inventory.ini <<EOF
+[azure]
+azure-vm ansible_host=${AZURE_IP}
 
-if [ -z "$ESXI_IP" ]; then
-  ESXI_IP="$(terraform -chdir=/home/student/git/hybrid-cloud/terraform/esxi output -raw esxi_vm_ip)"
-fi
+[esxi]
+esxi-vm ansible_host=${ESXI_IP}
 
-printf '%s\n' \
-  '[azure]' \
-  "azure-vm ansible_host=${AZURE_IP}" \
-  '' \
-  '[esxi]' \
-  "esxi-vm ansible_host=${ESXI_IP}" \
-  '' \
-  '[all:vars]' \
-  'ansible_user=student' \
-  'ansible_ssh_private_key_file=/home/student/.ssh/skylab' \
-  'ansible_python_interpreter=/usr/bin/python3' \
-  > ansible/inventory.ini
+[all:vars]
+ansible_user=student
+ansible_ssh_private_key_file=/home/student/.ssh/skylab
+ansible_python_interpreter=/usr/bin/python3
+EOF
 
 echo "Generated Ansible inventory:"
 cat ansible/inventory.ini
